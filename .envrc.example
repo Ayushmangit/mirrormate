@@ -1,0 +1,21 @@
+export FROM_EMAIL=
+export SENDGRID_API_KEY=
+	
+export ENV=
+export GOOSE_DBSTRING=
+export GOOSE_DRIVER=postgres
+export DB_ADDR=
+export ADDR=:8080
+export EXTERNAL_URL=
+export FRONTEND_URL=
+export DB_MAX_OPEN_CONNS=30
+export DB_MAX_IDLE_CONNS=30
+export DB_MAX_IDLE_TIME=15m
+
+export REDIS_ADDR=""
+export REDIS_DB=0
+export REDIS_PASSWORD=""
+export REDIS_ENABED=
+
+
+export VITE_BASE_URL=https://localhost:5173/v1
