@@ -1,0 +1,70 @@
+# =========================
+# Environment / Secrets
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# direnv
+.envrc
+
+# =========================
+# OS / Editor
+# =========================
+
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Frontend - Vite / React
+# =========================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Vite local env files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# =========================
+# Backend - Go
+# =========================
+
+backend/bin/
+backend/tmp/
+backend/vendor/
+
+# Go coverage / profiling
+backend/coverage.out
+backend/coverage.html
+backend/*.prof
+
+# Compiled binaries
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+
+# =========================
+# Logs
+# =========================
+
+*.log
+logs/
+
+# =========================
+# Temporary files
+# =========================
+
+*.tmp
+*.temp
+.cache/
