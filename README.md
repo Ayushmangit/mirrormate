@@ -1,6 +1,6 @@
 # MirrorMate
 
-MirrorMate BKC is a full-stack application built with **Go, PostgreSQL, Redis, React, TypeScript, and Vite**.
+MirrorMate is a full-stack application built with **Go, PostgreSQL, Redis, React, TypeScript, and Vite**.
 
 The repository is structured as a monorepo containing a Go backend and a React frontend. The backend uses PostgreSQL for persistent data, Redis for caching/rate limiting, Goose for database migrations, and a layered internal architecture.
 
