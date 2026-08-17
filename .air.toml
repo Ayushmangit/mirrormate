@@ -3,29 +3,50 @@
 env_files = []
 root = "."
 testdata_dir = "testdata"
-tmp_dir = "bin"
+tmp_dir = "backend/bin"
 
 [build]
   args_bin = []
-  bin = "./bin/main"
-  cmd = "go build -o ./bin/main ./cmd/api"
+  bin = "./backend/bin/main"
+  cmd = "cd backend && go build -o ./bin/main ./cmd/api"
   delay = 1000
-  entrypoint = ["./bin/main"]
-  exclude_dir = ["assets", "bin", "vendor", "testdata","web","docs","scripts"]
+  entrypoint = ["./backend/bin/main"]
+
+  exclude_dir = [
+    "assets",
+    "backend/bin",
+    "vendor",
+    "testdata",
+    "web",
+    "docs",
+    "scripts"
+  ]
+
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
   full_bin = ""
   ignore_dangerous_root_dir = false
-  include_dir = []
+
+  include_dir = [
+    "backend"
+  ]
+
   include_ext = ["go", "tpl", "tmpl", "html"]
   include_file = []
+
   kill_delay = "0s"
   log = "build-errors.log"
+
   poll = false
   poll_interval = 0
-  post_cmd = ["swag fmt","swag init -g cmd/api/main.go --parseDependency --parseInternal "]
+
+  post_cmd = [
+    "cd backend && swag fmt",
+    "cd backend && swag init -g cmd/api/main.go --parseDependency --parseInternal"
+  ]
+
   pre_cmd = []
   rerun = false
   rerun_delay = 500
