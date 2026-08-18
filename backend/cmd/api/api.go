@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Ayushmangit/mirrormate.git/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type application struct {
 	config config
+	store  store.Storage // name field to access method or properties can access with app.store.users.create()
+	// could have used store.Storage to do embedded struct and can access methods via app.users.create()
 }
 
 type config struct {
@@ -42,6 +45,10 @@ func (app *application) mount() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hi"))
+		})
+
+		r.Route("/users", func(r chi.Router) {
+			r.Post("/", app.createUserHandler)
 		})
 	})
 	return r

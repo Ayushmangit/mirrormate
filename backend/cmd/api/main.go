@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Ayushmangit/mirrormate.git/internal/db"
 	"github.com/Ayushmangit/mirrormate.git/internal/env"
+	"github.com/Ayushmangit/mirrormate.git/internal/store"
 )
 
 func main() {
@@ -21,8 +22,10 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+	store := store.NewStorage(db)
 	app := application{
 		config: cfg,
+		store:  store,
 	}
 	mux := app.mount()
 	app.run(mux)
