@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,6 +19,7 @@ type User struct {
 	Password  password `json:"-"`
 	Username  string   `json:"username"`
 	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
 	RoleID    int64    `json:"role_id"`
 	IsActive  bool     `json:"is_active"`
 	Role      Role     `json:"role"`
@@ -120,53 +122,70 @@ func (s *UserStorage) GetByEmail(ctx context.Context, email string) (*User, erro
 	return user, nil
 }
 
-type UpdateUserpayload struct {
+type UpdateUserPayload struct {
 	Username *string `json:"username"`
 	Email    *string `json:"email"`
 }
 
-// TODO: complete update patch req
-func (s *UserStorage) UpdateByID(ctx context.Context, userID int64, updatePayload *UpdateUserpayload) (*User, error) {
+func (s *UserStorage) UpdateByID(ctx context.Context, userID int64, updatePayload UpdateUserPayload) (*User, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	query := `
-		 UPDATE users
-		 SET
-		 username=COALESCE($1,username),
-		 email=COALESCE($2,email),
-		 updated_at=NOW()
-		 WHERE id=$3
-		 RETURNING
-		 id,
-		 username,
-		 email,
-		 created_at,
-		 updated_at
+		UPDATE users
+		SET
+			username = COALESCE($1, username),
+			email = COALESCE($2, email),
+			updated_at = NOW()
+		WHERE id = $3
+		RETURNING
+			id,
+			username,
+			email,
+			created_at,
+			updated_at
 	`
+
 	user := &User{}
-	err := s.db.QueryRowContext(ctx, query, updatePayload.Username, updatePayload.Email, userID).Scan(
+
+	err := s.db.QueryRowContext(
+		ctx,
+		query,
+		updatePayload.Username,
+		updatePayload.Email,
+		userID,
+	).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
 		&user.CreatedAt,
-		&user.RoleID,
+		&user.UpdatedAt,
 	)
+
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return nil, ErrNotFound
-		case err.Error() == `pq: duplicate email "`:
-			return nil, ErrDuplicateEmail
-		case err.Error() == `pq: duplicate username"`:
-			return nil, ErrDuplicateUsername
-		default:
-			return nil, err
+		var pqErr *pq.Error
+
+		if errors.As(err, &pqErr) {
+			if pqErr.Code == "23505" {
+				switch pqErr.Constraint {
+				case "users_email_key":
+					return nil, ErrDuplicateEmail
+
+				case "users_username_key":
+					return nil, ErrDuplicateUsername
+				}
+			}
 		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+
+		return nil, err
 	}
 
-	return nil, nil
+	return user, nil
 }
 
 func (s *UserStorage) DeleteByID(ctx context.Context, userID int64) error {

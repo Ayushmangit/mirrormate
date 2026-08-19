@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrDuplicateEmail    = errors.New("New  payload")
+	ErrDuplicateEmail    = errors.New("record not found")
 	ErrDuplicateUsername = errors.New("record not found")
 	ErrNotFound          = errors.New("resource not found")
 )
@@ -20,7 +20,7 @@ type Storage struct {
 		Create(context.Context, *User) error
 		GetByID(context.Context, int64) (*User, error)
 		GetByEmail(context.Context, string) (*User, error)
-		UpdateByID(context.Context, int64, *User) (*User, error)
+		UpdateByID(context.Context, int64, UpdateUserPayload) (*User, error)
 		DeleteByID(context.Context, int64) error
 	}
 

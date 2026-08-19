@@ -28,6 +28,13 @@ definitions:
       name:
         type: string
     type: object
+  github_com_Ayushmangit_mirrormate_git_internal_store.UpdateUserPayload:
+    properties:
+      email:
+        type: string
+      username:
+        type: string
+    type: object
   github_com_Ayushmangit_mirrormate_git_internal_store.User:
     properties:
       created_at:
@@ -42,6 +49,8 @@ definitions:
         $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.Role'
       role_id:
         type: integer
+      updated_at:
+        type: string
       username:
         type: string
     type: object
@@ -57,7 +66,7 @@ info:
   termsOfService: http://swagger.io/terms/
   title: MirrorMate
 paths:
-  /authentication/token:
+  /authentication/login:
     post:
       consumes:
       - application/json
@@ -149,6 +158,91 @@ paths:
       summary: Healthcheck
       tags:
       - health
+  /users/{userID}:
+    delete:
+      description: Delete a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Delete user
+      tags:
+      - users
+    get:
+      description: Get a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get user by ID
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Update a user's information
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - description: User update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.UpdateUserPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "409":
+          description: Conflict
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Update user
+      tags:
+      - users
 securityDefinitions:
   ApiKeyAuth:
     in: header

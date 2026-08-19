@@ -50,6 +50,15 @@ func (app *application) mount() http.Handler {
 			httpSwagger.URL("http://localhost:8080/v1/swagger/doc.json"),
 		))
 
+		r.Route("/users", func(r chi.Router) {
+			r.Route("/{userID}", func(r chi.Router) {
+				r.Get("/", app.getUserHandler)
+				r.Patch("/", app.updateUserHandler)
+				r.Delete("/", app.deleteUserHandler)
+			})
+
+		})
+
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/users", app.registerUserHandler)
 			r.Post("/login", app.loginUserHandler)
