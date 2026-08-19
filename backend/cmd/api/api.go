@@ -13,13 +13,13 @@ import (
 
 type application struct {
 	config config
-	store  store.Storage // name field to access method or properties can access with app.store.users.create()
-	// could have used store.Storage to do embedded struct and can access methods via app.users.create()
+	store  store.Storage
 }
 
 type config struct {
 	addr string
 	db   dbConfig
+	env  string
 }
 
 type dbConfig struct {
@@ -44,15 +44,14 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("hi"))
-		})
+		r.Get("/health", app.healthCheckHandler)
+
 		r.Get("/swagger/*", httpSwagger.Handler(
 			httpSwagger.URL("http://localhost:8080/v1/swagger/doc.json"),
 		))
 
-		r.Route("/users", func(r chi.Router) {
-			r.Post("/", app.createUserHandler)
+		r.Route("/authentication", func(r chi.Router) {
+			r.Post("/users", app.registerUserHandler)
 		})
 	})
 	return r
