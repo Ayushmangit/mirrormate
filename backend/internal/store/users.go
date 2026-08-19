@@ -45,7 +45,10 @@ func (p *password) Compare(slug string) error {
 func (s *UserStorage) Create(ctx context.Context, user *User) error {
 
 	query := `
-INSERT INTO users(username,email,password,role_id) values ($1,$2,$3,(SELECT id from roles where name = $4)) returning id,created_at;
+INSERT 
+	INTO users(username,email,password,role_id) 
+	values ($1,$2,$3,
+	(SELECT id from roles where name = $4)) returning id,created_at;
 `
 
 	role := user.Role.Name
@@ -53,7 +56,13 @@ INSERT INTO users(username,email,password,role_id) values ($1,$2,$3,(SELECT id f
 		role = "user"
 	}
 
-	err := s.db.QueryRowContext(ctx, query, user.Username, user.Email, user.Password, role).Scan(&user.ID, &user.CreatedAt)
+	err := s.db.QueryRowContext(ctx, query,
+		user.Username,
+		user.Email,
+		user.Password.hash,
+		role).Scan(
+		&user.ID,
+		&user.CreatedAt)
 	if err != nil {
 		switch {
 		case err.Error() == `pq: duplicate key value violates unique constraint "user_email_key"`:

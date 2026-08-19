@@ -6,7 +6,7 @@ import (
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
 )
 
-type CreateUserPayload struct {
+type RegisterUserPayload struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -14,23 +14,23 @@ type CreateUserPayload struct {
 
 // TODO: Add validation later on
 
-// CreateUser godoc
+// RegisterUser godoc
 //
 //	@Summary		Create a new user
 //	@Description	Create a new user account
-//	@Tags			users
+//	@Tags			Authentication
 //	@Accept			json
 //	@Produce		json
-//	@Param			payload	body		CreateUserPayload	true	"User registration payload"
+//	@Param			payload	body		RegisterUserPayload	true	"User registration payload"
 //	@Success		201		{object}	store.User
 //	@Failure		400		{object}	error
 //	@Failure		409		{object}	error
 //	@Failure		500		{object}	error
-//	@Router			/users [post]
-func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
+//	@Router			/authentication/users [post]
+func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var payload CreateUserPayload
+	var payload RegisterUserPayload
 	if err := ReadJson(w, r, &payload); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -38,10 +38,13 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 	user := &store.User{
 		Username: payload.Username,
 		Email:    payload.Email,
-		Password: payload.Password,
 		Role: store.Role{
 			Name: "user",
 		},
+	}
+	if err := user.Password.Set(payload.Password); err != nil {
+		app.InternalServerError(w, r, err)
+		return
 	}
 
 	if err := app.store.Users.Create(ctx, user); err != nil {
@@ -58,5 +61,9 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 			app.InternalServerError(w, r, err)
 		}
 		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusCreated, nil); err != nil {
+		app.InternalServerError(w, r, err)
 	}
 }

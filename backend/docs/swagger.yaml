@@ -1,6 +1,6 @@
 basePath: /v1
 definitions:
-  cmd_api.CreateUserPayload:
+  cmd_api.RegisterUserPayload:
     properties:
       email:
         type: string
@@ -50,7 +50,7 @@ info:
   termsOfService: http://swagger.io/terms/
   title: MirrorMate
 paths:
-  /users:
+  /authentication/users:
     post:
       consumes:
       - application/json
@@ -61,7 +61,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/cmd_api.CreateUserPayload'
+          $ref: '#/definitions/cmd_api.RegisterUserPayload'
       produces:
       - application/json
       responses:
@@ -80,7 +80,35 @@ paths:
           schema: {}
       summary: Create a new user
       tags:
-      - users
+      - Authentication
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Healthcheck
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Healthcheck
+      tags:
+      - health
 securityDefinitions:
   ApiKeyAuth:
     in: header
