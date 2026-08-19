@@ -17,6 +17,10 @@ const QueryTimeoutDuration = time.Second * 5
 type Storage struct {
 	Users interface {
 		Create(context.Context, *User) error
+		GetByID(context.Context, int64) (*User, error)
+		GetByEmail(context.Context, string) (*User, error)
+		UpdateByID(context.Context, int64, *User) (*User, error)
+		DeleteByID(context.Context, int64) error
 	}
 
 	Roles interface {

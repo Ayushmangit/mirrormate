@@ -76,3 +76,67 @@ INSERT
 
 	return nil
 }
+
+func (s *UserStorage) GetByID(ctx context.Context, userID int64) (*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+	query := `SELECT id,username,email,created_at,role_id from users where id = $1`
+
+	user := &User{}
+
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.CreatedAt,
+		&user.RoleID,
+	)
+	//TODO : error handling
+	if err != nil {
+		return nil, nil
+	}
+	return user, nil
+}
+
+func (s *UserStorage) GetByEmail(ctx context.Context, email string) (*User, error) {
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+	query := `SELECT id,username,email,created_at,role_id from users where email = $1`
+
+	user := &User{}
+
+	err := s.db.QueryRowContext(ctx, query, email).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.CreatedAt,
+		&user.RoleID,
+	)
+	//TODO: error handling
+	if err != nil {
+		return nil, nil
+	}
+	return user, nil
+}
+
+// TODO: complete update patch req
+func (s *UserStorage) UpdateByID(ctx context.Context, userID int64, updatePayload *User) (*User, error) {
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+	return nil, nil
+}
+
+func (s *UserStorage) DeleteByID(ctx context.Context, userID int64) error {
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	query := `DELETE from users where id = $1`
+	_, err := s.db.ExecContext(ctx, query, userID)
+	//TODO: error handling
+	if err != nil {
+		return err
+	}
+	return nil
+}
