@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
 
 var (
@@ -11,12 +12,15 @@ var (
 	ErrDuplicateUsername = errors.New("record not found")
 )
 
+const QueryTimeoutDuration = time.Second * 5
+
 type Storage struct {
 	Users interface {
 		Create(context.Context, *User) error
 	}
 
 	Roles interface {
+		GetByName(context.Context, string) (*Role, error)
 	}
 }
 
