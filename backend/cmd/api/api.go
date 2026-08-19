@@ -8,6 +8,7 @@ import (
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type application struct {
@@ -46,6 +47,9 @@ func (app *application) mount() http.Handler {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hi"))
 		})
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("http://localhost:8080/v1/swagger/doc.json"),
+		))
 
 		r.Route("/users", func(r chi.Router) {
 			r.Post("/", app.createUserHandler)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
@@ -13,9 +12,26 @@ type CreateUserPayload struct {
 	Password string `json:"password"`
 }
 
+// TODO: Add validation later on
+
+// CreateUser godoc
+//
+//	@Summary		Create a new user
+//	@Description	Create a new user account
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		CreateUserPayload	true	"User registration payload"
+//	@Success		201		{object}	store.User
+//	@Failure		400		{object}	error
+//	@Failure		409		{object}	error
+//	@Failure		500		{object}	error
+//	@Router			/users [post]
 func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var payload CreateUserPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := ReadJson(w, r, &payload); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -23,21 +39,24 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 		Username: payload.Username,
 		Email:    payload.Email,
 		Password: payload.Password,
+		Role: store.Role{
+			Name: "user",
+		},
 	}
 
-	ctx := r.Context()
 	if err := app.store.Users.Create(ctx, user); err != nil {
+		//NOTE: Never send errors like email already exists , intruder can then start guessing the passwords
 		switch err {
 		case store.ErrDuplicateEmail:
-			http.Error(w, "email already exixts", http.StatusConflict)
+			// http.Error(w, "email already exists", http.StatusConflict)
+			app.BadRequest(w, r, err)
 
 		case store.ErrDuplicateUsername:
-			http.Error(w, "username already exists", http.StatusConflict)
+			app.BadRequest(w, r, err)
 
 		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			app.InternalServerError(w, r, err)
 		}
 		return
 	}
-
 }
