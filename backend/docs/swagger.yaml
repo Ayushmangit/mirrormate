@@ -1,5 +1,12 @@
 basePath: /v1
 definitions:
+  cmd_api.LoginUserPayload:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
   cmd_api.RegisterUserPayload:
     properties:
       email:
@@ -50,6 +57,39 @@ info:
   termsOfService: http://swagger.io/terms/
   title: MirrorMate
 paths:
+  /authentication/token:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns a success response
+      parameters:
+      - description: User login payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/cmd_api.LoginUserPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Login a user
+      tags:
+      - Authentication
   /authentication/users:
     post:
       consumes:
