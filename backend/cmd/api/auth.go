@@ -20,19 +20,19 @@ type LoginUserPayload struct {
 
 // TODO: Add validation later on
 
-// RegisterUser godoc
+// LoginUser godoc
 //
-//	@Summary		Create a new user
-//	@Description	Create a new user account
+//	@Summary		Login a user
+//	@Description	Authenticates a user and returns a success response
 //	@Tags			Authentication
 //	@Accept			json
 //	@Produce		json
-//	@Param			payload	body		RegisterUserPayload	true	"User registration payload"
-//	@Success		201		{object}	store.User
+//	@Param			payload	body		LoginUserPayload	true	"User login payload"
+//	@Success		200		{object}	map[string]string
 //	@Failure		400		{object}	error
-//	@Failure		409		{object}	error
+//	@Failure		401		{object}	error
 //	@Failure		500		{object}	error
-//	@Router			/authentication/users [post]
+//	@Router			/authentication/token [post]
 func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var payload LoginUserPayload
@@ -70,6 +70,19 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// RegisterUser godoc
+//
+//	@Summary		Create a new user
+//	@Description	Create a new user account
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		RegisterUserPayload	true	"User registration payload"
+//	@Success		201		{object}	store.User
+//	@Failure		400		{object}	error
+//	@Failure		409		{object}	error
+//	@Failure		500		{object}	error
+//	@Router			/authentication/users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
