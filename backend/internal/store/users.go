@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -119,11 +120,52 @@ func (s *UserStorage) GetByEmail(ctx context.Context, email string) (*User, erro
 	return user, nil
 }
 
+type UpdateUserpayload struct {
+	Username *string `json:"username"`
+	Email    *string `json:"email"`
+}
+
 // TODO: complete update patch req
-func (s *UserStorage) UpdateByID(ctx context.Context, userID int64, updatePayload *User) (*User, error) {
+func (s *UserStorage) UpdateByID(ctx context.Context, userID int64, updatePayload *UpdateUserpayload) (*User, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
+
+	query := `
+		 UPDATE users
+		 SET
+		 username=COALESCE($1,username),
+		 email=COALESCE($2,email),
+		 updated_at=NOW()
+		 WHERE id=$3
+		 RETURNING
+		 id,
+		 username,
+		 email,
+		 created_at,
+		 updated_at
+	`
+	user := &User{}
+	err := s.db.QueryRowContext(ctx, query, updatePayload.Username, updatePayload.Email, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.CreatedAt,
+		&user.RoleID,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNotFound
+		case err.Error() == `pq: duplicate email "`:
+			return nil, ErrDuplicateEmail
+		case err.Error() == `pq: duplicate username"`:
+			return nil, ErrDuplicateUsername
+		default:
+			return nil, err
+		}
+	}
+
 	return nil, nil
 }
 
