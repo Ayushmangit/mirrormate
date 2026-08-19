@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
@@ -8,6 +9,11 @@ import (
 
 type RegisterUserPayload struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginUserPayload struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -27,6 +33,43 @@ type RegisterUserPayload struct {
 //	@Failure		409		{object}	error
 //	@Failure		500		{object}	error
 //	@Router			/authentication/users [post]
+func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var payload LoginUserPayload
+	if err := ReadJson(w, r, &payload); err != nil {
+		app.BadRequest(w, r, errors.New("invalid request payload"))
+		return
+	}
+	if payload.Email == "" || payload.Password == "" {
+		app.BadRequest(w, r, errors.New("email and password are required"))
+		return
+	}
+	// 1. Fetch user by email from DB
+	user, err := app.store.Users.GetByEmail(ctx, payload.Email)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			// 🔒 Masked error: Do NOT leak if email exists or not
+			app.UnAuthorized(w, r, errors.New("invalid credentials"))
+		default:
+			app.InternalServerError(w, r, err)
+		}
+		return
+	}
+	// 2. Compare payload password with hashed password in DB
+	if err := user.Password.Compare(payload.Password); err != nil {
+		// 🔒 Masked error: Same generic message for wrong password
+		app.UnAuthorized(w, r, errors.New("invalid credentials"))
+		return
+	}
+	// 3. Login Successful! Return response to Frontend
+	if err := app.jsonResponse(w, http.StatusOK, map[string]string{
+		"message": "login successful",
+	}); err != nil {
+		app.InternalServerError(w, r, err)
+	}
+}
+
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
