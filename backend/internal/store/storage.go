@@ -10,6 +10,7 @@ import (
 var (
 	ErrDuplicateEmail    = errors.New("New  payload")
 	ErrDuplicateUsername = errors.New("record not found")
+	ErrNotFound          = errors.New("resource not found")
 )
 
 const QueryTimeoutDuration = time.Second * 5
