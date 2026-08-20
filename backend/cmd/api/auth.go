@@ -8,17 +8,15 @@ import (
 )
 
 type RegisterUserPayload struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username string `json:"username" validate:"required,max=100"`
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
 type LoginUserPayload struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,min=3,max=72"`
 }
-
-// TODO: Add validation later on
 
 // LoginUser godoc
 //
@@ -40,11 +38,12 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 		app.BadRequest(w, r, errors.New("invalid request payload"))
 		return
 	}
-	if payload.Email == "" || payload.Password == "" {
-		app.BadRequest(w, r, errors.New("email and password are required"))
+
+	if err := Validate.Struct(payload); err != nil {
+		app.BadRequest(w, r, err)
 		return
 	}
-	// 1. Fetch user by email from DB
+
 	user, err := app.store.Users.GetByEmail(ctx, payload.Email)
 	if err != nil {
 		switch {
@@ -59,7 +58,6 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 		app.UnAuthorized(w, r, errors.New("invalid credentials"))
 		return
 	}
-	// 3. Login Successful! Return response to Frontend
 	if err := app.jsonResponse(w, http.StatusOK, map[string]string{
 		"message": "login successful",
 	}); err != nil {
@@ -88,6 +86,12 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.BadRequest(w, r, err)
+		return
+	}
+
 	user := &store.User{
 		Username: payload.Username,
 		Email:    payload.Email,

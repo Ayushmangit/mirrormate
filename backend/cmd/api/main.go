@@ -1,6 +1,9 @@
 package main
 
 import (
+	"time"
+
+	"github.com/Ayushmangit/mirrormate.git/internal/auth"
 	"github.com/Ayushmangit/mirrormate.git/internal/db"
 	"github.com/Ayushmangit/mirrormate.git/internal/env"
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
@@ -37,17 +40,36 @@ func main() {
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
 		env: env.GetString("ENV", "development"),
+		auth: authConfig{
+			token: tokenConfig{
+				secret: env.GetString("JWT_SECRET", "asdhpasdhfgljkdshfjashdf"),
+				exp:    time.Hour * 24 * 3, //3 days,
+				iss:    env.GetString("TOKEN_HOST", "mirrormate"),
+				aud:    env.GetString("TOKEN_HOST", "mirrormate"),
+			},
+		},
 	}
 
-	db, err := db.New(cfg.db.addr, cfg.db.maxOpenConns, cfg.db.maxIdleConns, cfg.db.maxIdleTime)
+	db, err := db.New(
+		cfg.db.addr,
+		cfg.db.maxOpenConns,
+		cfg.db.maxIdleConns,
+		cfg.db.maxIdleTime)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
+
 	store := store.NewStorage(db)
+	auth := auth.NewJWTAuthenticator(
+		cfg.auth.token.secret,
+		cfg.auth.token.aud,
+		cfg.auth.token.iss)
+
 	app := application{
 		config: cfg,
 		store:  store,
+		auth:   auth,
 	}
 	mux := app.mount()
 	app.run(mux)
