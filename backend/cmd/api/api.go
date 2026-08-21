@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Ayushmangit/mirrormate.git/internal/auth"
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -14,12 +15,25 @@ import (
 type application struct {
 	config config
 	store  store.Storage
+	auth   auth.Authenticator
 }
 
 type config struct {
 	addr string
 	db   dbConfig
 	env  string
+	auth authConfig
+}
+
+type authConfig struct {
+	token tokenConfig
+}
+
+type tokenConfig struct {
+	exp    time.Duration
+	iss    string
+	secret string
+	aud    string
 }
 
 type dbConfig struct {
