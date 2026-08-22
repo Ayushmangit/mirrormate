@@ -3,18 +3,32 @@ definitions:
   cmd_api.LoginUserPayload:
     properties:
       email:
+        maxLength: 255
         type: string
       password:
+        maxLength: 72
+        minLength: 3
         type: string
+    required:
+    - email
+    - password
     type: object
   cmd_api.RegisterUserPayload:
     properties:
       email:
+        maxLength: 255
         type: string
       password:
+        maxLength: 72
+        minLength: 3
         type: string
       username:
+        maxLength: 100
         type: string
+    required:
+    - email
+    - password
+    - username
     type: object
   github_com_Ayushmangit_mirrormate_git_internal_store.Role:
     properties:
