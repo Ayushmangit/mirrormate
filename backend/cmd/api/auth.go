@@ -55,7 +55,7 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := user.Password.Compare(payload.Password); err != nil {
-		app.UnAuthorized(w, r, errors.New("invalid credentials"))
+		app.UnAuthorized(w, r, errors.New("invalid credentials password"))
 		return
 	}
 	if err := app.jsonResponse(w, http.StatusOK, map[string]string{

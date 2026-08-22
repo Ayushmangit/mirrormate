@@ -83,13 +83,14 @@ INSERT
 func (s *UserStorage) GetByID(ctx context.Context, userID int64) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
-	query := `SELECT id,username,email,created_at,role_id from users where id = $1`
+	query := `SELECT id,username,password ,email,created_at,role_id from users where id = $1`
 
 	user := &User{}
 
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&user.ID,
 		&user.Username,
+		&user.Password.hash,
 		&user.Email,
 		&user.CreatedAt,
 		&user.RoleID,
@@ -104,7 +105,7 @@ func (s *UserStorage) GetByID(ctx context.Context, userID int64) (*User, error) 
 func (s *UserStorage) GetByEmail(ctx context.Context, email string) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
-	query := `SELECT id,username,email,created_at,role_id from users where email = $1`
+	query := `SELECT id,username,email,password,created_at,role_id from users where email = $1`
 
 	user := &User{}
 
@@ -112,6 +113,7 @@ func (s *UserStorage) GetByEmail(ctx context.Context, email string) (*User, erro
 		&user.ID,
 		&user.Username,
 		&user.Email,
+		&user.Password.hash,
 		&user.CreatedAt,
 		&user.RoleID,
 	)
