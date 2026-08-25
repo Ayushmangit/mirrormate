@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
 )
@@ -58,11 +62,35 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 		app.UnAuthorized(w, r, errors.New("invalid credentials password"))
 		return
 	}
+
+	if !user.IsActive {
+		app.UnAuthorized(w, r, errors.New("user account is not activated"))
+		return
+	}
+	//generate claims
+	// generate JWT token with claims
+	//send the user and jwt in response
+
+	//TODO: create a LoginResponse type which will have the user and JWT
+
 	if err := app.jsonResponse(w, http.StatusOK, map[string]string{
 		"message": "login successful",
 	}); err != nil {
 		app.InternalServerError(w, r, err)
 	}
+}
+
+type UserWithToken struct {
+	*store.User `json:"user"`
+	Token       string `json:"token"`
+}
+
+func generateRandomToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // RegisterUser godoc
@@ -80,18 +108,15 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 //	@Router			/authentication/users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var payload RegisterUserPayload
 	if err := ReadJson(w, r, &payload); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		app.BadRequest(w, r, errors.New("invalid request payload"))
 		return
 	}
-
 	if err := Validate.Struct(payload); err != nil {
 		app.BadRequest(w, r, err)
 		return
 	}
-
 	user := &store.User{
 		Username: payload.Username,
 		Email:    payload.Email,
@@ -103,24 +128,35 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		app.InternalServerError(w, r, err)
 		return
 	}
+	// 1. Generate cryptographically random plain token
+	plainToken, err := generateRandomToken()
+	if err != nil {
+		app.InternalServerError(w, r, err)
+		return
+	}
+	// 2. Hash plain token with SHA-256 before storing
+	hash := sha256.Sum256([]byte(plainToken))
+	hashToken := hex.EncodeToString(hash[:])
+	// 3. Store user with invitation token (expiry: 3 days)
 
-	if err := app.store.Users.Create(ctx, user); err != nil {
-		//NOTE: Never send errors like email already exists , intruder can then start guessing the passwords
+	//TODO: use the app.cfg.auth.token.expiry instead of hardcoding
+	invitationExp := 3 * 24 * time.Hour
+
+	if err := app.store.Users.CreateAndInvite(ctx, user, hashToken, invitationExp); err != nil {
 		switch err {
-		case store.ErrDuplicateEmail:
-			// http.Error(w, "email already exists", http.StatusConflict)
+		case store.ErrDuplicateEmail, store.ErrDuplicateUsername:
 			app.BadRequest(w, r, err)
-
-		case store.ErrDuplicateUsername:
-			app.BadRequest(w, r, err)
-
 		default:
 			app.InternalServerError(w, r, err)
 		}
 		return
 	}
-
-	if err := app.jsonResponse(w, http.StatusCreated, nil); err != nil {
+	// 4. Return response containing plain token
+	response := UserWithToken{
+		User:  user,
+		Token: plainToken,
+	}
+	if err := app.jsonResponse(w, http.StatusCreated, response); err != nil {
 		app.InternalServerError(w, r, err)
 	}
 }
