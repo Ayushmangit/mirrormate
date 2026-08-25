@@ -131,3 +131,35 @@ func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
+
+// ActivateUser godoc
+//
+//	@Summary		Activates a user account
+//	@Description	Activates a user account using an invitation token
+//	@Tags			users
+//	@Produce		json
+//	@Param			token	path	string	true	"Invitation Token"
+//	@Success		200		{object}	map[string]string
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Router			/users/activate/{token} [put]
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+
+	err := app.store.Users.Activate(r.Context(), token)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.NotFound(w, r, err)
+		default:
+			app.InternalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, map[string]string{
+		"message": "user successfully activated",
+	}); err != nil {
+		app.InternalServerError(w, r, err)
+	}
+}
