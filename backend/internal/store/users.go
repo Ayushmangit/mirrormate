@@ -86,13 +86,14 @@ INSERT
 func (s *UserStorage) GetByID(ctx context.Context, userID int64) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
-	query := `SELECT id,username,email,created_at,role_id from users where id = $1`
+	query := `SELECT id,username,password ,email,created_at,role_id from users where id = $1`
 
 	user := &User{}
 
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&user.ID,
 		&user.Username,
+		&user.Password.hash,
 		&user.Email,
 		&user.CreatedAt,
 		&user.RoleID,
