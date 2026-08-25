@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -9,6 +8,8 @@ import (
 	"time"
 
 	"github.com/Ayushmangit/mirrormate.git/internal/store"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type RegisterUserPayload struct {
@@ -22,6 +23,11 @@ type LoginUserPayload struct {
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
+type LoginResponse struct {
+	*store.User `json:"user"`
+	AccessToken string `json:"access_token"`
+}
+
 // LoginUser godoc
 //
 //	@Summary		Login a user
@@ -30,7 +36,7 @@ type LoginUserPayload struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		LoginUserPayload	true	"User login payload"
-//	@Success		200		{object}	map[string]string
+//	@Success		200		{object}	LoginResponse
 //	@Failure		400		{object}	error
 //	@Failure		401		{object}	error
 //	@Failure		500		{object}	error
@@ -39,7 +45,7 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 	var payload LoginUserPayload
 	if err := ReadJson(w, r, &payload); err != nil {
-		app.BadRequest(w, r, errors.New("invalid request payload"))
+		app.BadRequest(w, r, store.ErrBadRequest)
 		return
 	}
 
@@ -52,45 +58,47 @@ func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			app.UnAuthorized(w, r, errors.New("invalid credentials"))
+			app.BadRequest(w, r, err)
 		default:
 			app.InternalServerError(w, r, err)
 		}
 		return
 	}
 	if err := user.Password.Compare(payload.Password); err != nil {
-		app.UnAuthorized(w, r, errors.New("invalid credentials password"))
+		app.UnAuthorized(w, r, store.ErrUnAuthorized)
 		return
 	}
 
 	if !user.IsActive {
-		app.UnAuthorized(w, r, errors.New("user account is not activated"))
+		app.UnAuthorized(w, r, store.ErrNotActivated)
 		return
 	}
-	//generate claims
-	// generate JWT token with claims
-	//send the user and jwt in response
+	claims := jwt.MapClaims{
+		"sub": user.ID,
+		"exp": time.Now().Add(app.config.auth.token.exp).Unix(),
+		"iat": time.Now().Unix(),
+		"nbf": time.Now().Unix(),
+		"iss": app.config.auth.token.iss,
+		"aud": app.config.auth.token.aud,
+	}
+	accessToken, err := app.auth.GenerateToken(claims)
+	if err != nil {
+		app.InternalServerError(w, r, err)
+		return
+	}
+	response := LoginResponse{
+		user,
+		accessToken,
+	}
 
-	//TODO: create a LoginResponse type which will have the user and JWT
-
-	if err := app.jsonResponse(w, http.StatusOK, map[string]string{
-		"message": "login successful",
-	}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, response); err != nil {
 		app.InternalServerError(w, r, err)
 	}
 }
 
-type UserWithToken struct {
+type RegisterResponse struct {
 	*store.User `json:"user"`
 	Token       string `json:"token"`
-}
-
-func generateRandomToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
 }
 
 // RegisterUser godoc
@@ -101,7 +109,7 @@ func generateRandomToken() (string, error) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		RegisterUserPayload	true	"User registration payload"
-//	@Success		201		{object}	store.User
+//	@Success		201		{object}	RegisterResponse
 //	@Failure		400		{object}	error
 //	@Failure		409		{object}	error
 //	@Failure		500		{object}	error
@@ -110,7 +118,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	var payload RegisterUserPayload
 	if err := ReadJson(w, r, &payload); err != nil {
-		app.BadRequest(w, r, errors.New("invalid request payload"))
+		app.BadRequest(w, r, store.ErrBadRequest)
 		return
 	}
 	if err := Validate.Struct(payload); err != nil {
@@ -128,21 +136,14 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		app.InternalServerError(w, r, err)
 		return
 	}
-	// 1. Generate cryptographically random plain token
-	plainToken, err := generateRandomToken()
-	if err != nil {
-		app.InternalServerError(w, r, err)
-		return
-	}
-	// 2. Hash plain token with SHA-256 before storing
+	plainToken := uuid.New().String()
 	hash := sha256.Sum256([]byte(plainToken))
 	hashToken := hex.EncodeToString(hash[:])
-	// 3. Store user with invitation token (expiry: 3 days)
 
-	//TODO: use the app.cfg.auth.token.expiry instead of hardcoding
-	invitationExp := 3 * 24 * time.Hour
-
-	if err := app.store.Users.CreateAndInvite(ctx, user, hashToken, invitationExp); err != nil {
+	if err := app.store.Users.CreateAndInvite(ctx,
+		user,
+		hashToken,
+		app.config.auth.token.exp); err != nil {
 		switch err {
 		case store.ErrDuplicateEmail, store.ErrDuplicateUsername:
 			app.BadRequest(w, r, err)
@@ -151,8 +152,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
-	// 4. Return response containing plain token
-	response := UserWithToken{
+	response := RegisterResponse{
 		User:  user,
 		Token: plainToken,
 	}

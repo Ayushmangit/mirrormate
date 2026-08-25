@@ -86,7 +86,7 @@ INSERT
 func (s *UserStorage) GetByID(ctx context.Context, userID int64) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
-	query := `SELECT id,username,password ,email,created_at,role_id from users where id = $1`
+	query := `SELECT id,username,password ,email,created_at,role_id,is_active from users where id = $1`
 
 	user := &User{}
 
@@ -97,6 +97,7 @@ func (s *UserStorage) GetByID(ctx context.Context, userID int64) (*User, error) 
 		&user.Email,
 		&user.CreatedAt,
 		&user.RoleID,
+		&user.IsActive,
 	)
 	//TODO : error handling
 	if err != nil {
@@ -131,8 +132,8 @@ func (s *UserStorage) GetByEmail(ctx context.Context, email string) (*User, erro
 }
 
 type UpdateUserPayload struct {
-	Username *string `json:"username"`
-	Email    *string `json:"email"`
+	Username *string `json:"username" validate:"omitempty,min=3,max=50"`
+	Email    *string `json:"email" validate:"omitempty,email"`
 }
 
 func (s *UserStorage) UpdateByID(ctx context.Context, userID int64, updatePayload UpdateUserPayload) (*User, error) {
@@ -211,69 +212,28 @@ func (s *UserStorage) DeleteByID(ctx context.Context, userID int64) error {
 }
 
 func (s *UserStorage) CreateAndInvite(ctx context.Context, user *User, token string, invitationExp time.Duration) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	query := `
-		INSERT INTO users(username, email, password, role_id)
-		VALUES ($1, $2, $3, (SELECT id FROM roles WHERE name = $4))
-		RETURNING id, created_at;
-	`
-	role := user.Role.Name
-	if role == "" {
-		role = "user"
-	}
-
-	err = tx.QueryRowContext(ctx, query, user.Username, user.Email, user.Password.hash, role).Scan(&user.ID, &user.CreatedAt)
-	if err != nil {
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) {
-			if pqErr.Code == "23505" {
-				switch pqErr.Constraint {
-				case "users_email_key":
-					return ErrDuplicateEmail
-				case "users_username_key":
-					return ErrDuplicateUsername
-				}
-			}
+	return withTx(s.db, ctx, func(tx *sql.Tx) error {
+		if err := s.Create(ctx, user); err != nil {
+			return err
 		}
-		return err
-	}
-
-	if err := s.createUserInvitation(ctx, tx, token, invitationExp, user.ID); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+		if err := s.createUserInvitation(ctx, tx, token, invitationExp, user.ID); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
-// TODO: convert this put into a patch change the update method instead of sending a user object we will send the user id
-// and then with the help of this id we will set the user to is_active true
 func (s *UserStorage) Activate(ctx context.Context, token string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	user, err := s.getUserFromInvitations(ctx, tx, token)
-	if err != nil {
-		return err
-	}
-
-	user.IsActive = true
-	if err := s.update(ctx, tx, user); err != nil {
-		return err
-	}
-
-	if err := s.deleteUserInvitations(ctx, tx, user.ID); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return withTx(s.db, ctx, func(tx *sql.Tx) error {
+		user, err := s.getUserFromInvitations(ctx, tx, token)
+		if err != nil {
+			return err
+		}
+		if err := s.activate(ctx, tx, user.ID); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *UserStorage) createUserInvitation(ctx context.Context, tx *sql.Tx, token string, invitationExp time.Duration, userID int64) error {
@@ -316,13 +276,16 @@ func (s *UserStorage) getUserFromInvitations(ctx context.Context, tx *sql.Tx, pl
 	return user, nil
 }
 
-func (s *UserStorage) update(ctx context.Context, tx *sql.Tx, user *User) error {
+func (s *UserStorage) activate(ctx context.Context, tx *sql.Tx, userID int64) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	query := `UPDATE users SET username = $1, email = $2, is_active = $3 WHERE id = $4`
-	_, err := tx.ExecContext(ctx, query, user.Username, user.Email, user.IsActive, user.ID)
-	return err
+	query := `UPDATE users SET is_active = true where id = $1`
+	_, err := tx.ExecContext(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *UserStorage) deleteUserInvitations(ctx context.Context, tx *sql.Tx, userID int64) error {
