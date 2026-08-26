@@ -1,20 +1,53 @@
 basePath: /v1
 definitions:
+  cmd_api.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.User'
+    type: object
   cmd_api.LoginUserPayload:
     properties:
       email:
+        maxLength: 255
         type: string
       password:
+        maxLength: 72
+        minLength: 3
         type: string
+    required:
+    - email
+    - password
+    type: object
+  cmd_api.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  cmd_api.RegisterResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.User'
     type: object
   cmd_api.RegisterUserPayload:
     properties:
       email:
+        maxLength: 255
         type: string
       password:
+        maxLength: 72
+        minLength: 3
         type: string
       username:
+        maxLength: 100
         type: string
+    required:
+    - email
+    - password
+    - username
     type: object
   github_com_Ayushmangit_mirrormate_git_internal_store.Role:
     properties:
@@ -84,9 +117,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/cmd_api.LoginResponse'
         "400":
           description: Bad Request
           schema: {}
@@ -96,6 +127,8 @@ paths:
         "500":
           description: Internal Server Error
           schema: {}
+      security:
+      - ApiKeyAuth: []
       summary: Login a user
       tags:
       - Authentication
@@ -117,7 +150,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_Ayushmangit_mirrormate_git_internal_store.User'
+            $ref: '#/definitions/cmd_api.RegisterResponse'
         "400":
           description: Bad Request
           schema: {}
@@ -171,13 +204,17 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: user deleted successfully
+          schema:
+            $ref: '#/definitions/cmd_api.MessageResponse'
         "400":
           description: Bad Request
           schema: {}
         "500":
           description: Internal Server Error
           schema: {}
+      security:
+      - ApiKeyAuth: []
       summary: Delete user
       tags:
       - users
@@ -202,6 +239,8 @@ paths:
         "500":
           description: Internal Server Error
           schema: {}
+      security:
+      - ApiKeyAuth: []
       summary: Get user by ID
       tags:
       - users
@@ -240,7 +279,36 @@ paths:
         "500":
           description: Internal Server Error
           schema: {}
+      security:
+      - ApiKeyAuth: []
       summary: Update user
+      tags:
+      - users
+  /users/activate/{token}:
+    get:
+      description: Activates a user account using an invitation token
+      parameters:
+      - description: Invitation Token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user activated successfully
+          schema:
+            $ref: '#/definitions/cmd_api.MessageResponse'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Activates a user account
       tags:
       - users
 securityDefinitions:
